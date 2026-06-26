@@ -18,6 +18,7 @@ estimated_reading_time: 5
 * The user asked for architecture only, so no technical stack or implementation choreography was locked in beyond structural recommendations
 * Competitor research was limited to publicly available product messaging and overview material, not teardown-level implementation details
 * Initial open questions about V1 audience, live collaboration, and adult portal shape were resolved through user iteration
+* The schema-planning pass was promoted into a dedicated artifact because the contract surface became too detailed for the main architecture plan alone
 
 ## Approaches Considered
 
@@ -58,7 +59,6 @@ Rationale:
 
 ## Follow-on Work Candidates
 
-* Define a technical stack once product scope and team constraints are known
-* Model the content schema and event model as the next architecture layer after this plan is approved
-* Define the first family-first learning world and parent-guided onboarding flow
-* Decide how much future educator scaffolding should remain visible in the shared adult portal architecture
+* Start the first child-journey feature slice on top of the new scaffold
+* Deepen build, lint, and workspace automation once the first feature slice is chosen
+* Map family-circle safety flows into API starter modules

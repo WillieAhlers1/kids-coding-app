@@ -59,6 +59,8 @@ Notes:
 
 * Content schemas will be essential for scaling curriculum without repeatedly changing client logic
 * Progress and gamification need event-driven state changes even if the backend remains a modular monolith
+* The first world should combine story-led animation with short puzzle checks so a 7-year-old learner gets both delight and structure
+* The first schema pass should explicitly model missions, onboarding, rewards, unlocks, and sandbox templates before implementation starts
 
 ### Phase 4: Delivery architecture recommendation
 
@@ -73,6 +75,8 @@ Notes:
 * Shared packages should isolate runtime logic, content schemas, and design primitives
 * Offline support should be treated as product-critical, not optional polish
 * Version 1 should ship with one shared adult portal optimized for parent guidance, while preserving future separation of guardian and educator surfaces
+* Monetization should stay outside the version 1 user journey, but the shared domain should preserve a minimal entitlement seam
+* The first scaffold should use npm workspaces, Next.js for the two web apps, and Fastify for the platform API
 
 ### Phase 5: Review and iterate
 
@@ -83,6 +87,16 @@ Success criteria:
 
 Open questions for iteration:
 
-* Should the creative sandbox be available from day one, or unlock after a short guided onboarding?
-* Is monetization out of scope for V1 planning, or should subscription boundaries influence architecture now?
-* Should the shared adult portal omit educator-specific workflows entirely in V1, or keep minimal structural placeholders for later growth?
+* Should the next execution phase prioritize child-app feature flow or deeper API and tooling hardening?
+
+## Version 1 experience notes
+
+* The recommended first world is a character-animation story world with short puzzle gates
+* The recommended onboarding flow starts with parent setup, then quickly transfers control to the child for an immediate success moment
+* The shared adult portal should stay parent-simple in version 1 and avoid visible educator complexity
+* The recommended sandbox unlock point is after mission 3, when the child has enough coding vocabulary to create confidently
+* The recommended narration default is on, with easy parent-controlled mute and replay support
+* The recommended monetization posture is no version 1 paywalling, with only a hidden architectural entitlement seam
+* `Pixel Park Adventure` remains the locked version 1 first-world theme
+* Schema planning now has a dedicated artifact for field-level contracts and service boundaries
+* Implementation planning now assumes an npm workspace monorepo with Next.js apps and a Fastify API service
