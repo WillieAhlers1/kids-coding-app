@@ -1,5 +1,6 @@
 import type { Mission, World } from "@kids-coding-app/content-schema";
 import type { FastifyPluginAsync } from "fastify";
+import { sendNotFound } from "./validation.js";
 
 const WORLDS: World[] = [
   {
@@ -69,7 +70,7 @@ export const registerContentRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const missions = MISSIONS.filter((mission) => mission.worldId === request.params.worldId);
       if (missions.length === 0) {
-        return reply.code(404).send({ missions: [] });
+        return sendNotFound(reply, `No missions were found for world ${request.params.worldId}.`);
       }
 
       return { missions };

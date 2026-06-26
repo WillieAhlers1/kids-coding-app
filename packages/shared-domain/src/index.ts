@@ -52,6 +52,13 @@ export interface FamilyCircle {
   reactions: string[];
 }
 
+export interface ApiErrorPayload {
+  error: string;
+  message: string;
+  statusCode: number;
+  fieldErrors: Record<string, string[]>;
+}
+
 export const domainEvents = [
   "ChildProfileCreated",
   "GuidanceSettingsUpdated",

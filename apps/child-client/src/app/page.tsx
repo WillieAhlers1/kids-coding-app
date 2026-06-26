@@ -24,6 +24,36 @@ type ProgressResponse = {
   emittedEvents?: string[];
 };
 
+type ApiErrorPayload = {
+  error: string;
+  message: string;
+  statusCode: number;
+  fieldErrors: Record<string, string[]>;
+};
+
+const readApiError = async (
+  response: Pick<Response, "json" | "status">
+): Promise<ApiErrorPayload> => {
+  const fallback: ApiErrorPayload = {
+    error: "RequestFailed",
+    message: `Request failed with status ${response.status}.`,
+    statusCode: response.status,
+    fieldErrors: {}
+  };
+
+  try {
+    const payload = (await response.json()) as Partial<ApiErrorPayload>;
+    return {
+      error: payload.error ?? fallback.error,
+      message: payload.message ?? fallback.message,
+      statusCode: payload.statusCode ?? fallback.statusCode,
+      fieldErrors: payload.fieldErrors ?? {}
+    };
+  } catch {
+    return fallback;
+  }
+};
+
 export default function HomePage() {
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000", []);
   const [childId, setChildId] = useState("child-ava");
@@ -31,17 +61,30 @@ export default function HomePage() {
   const [childProfile, setChildProfile] = useState<ChildProfileResponse["childProfile"]>(null);
   const [progress, setProgress] = useState<ProgressResponse["progress"] | null>(null);
   const [emittedEvents, setEmittedEvents] = useState<string[]>([]);
+  const [apiError, setApiError] = useState<ApiErrorPayload | null>(null);
+
+  const fieldErrors = apiError?.fieldErrors ?? {};
+  const renderFieldErrors = (fieldName: string) =>
+    fieldErrors[fieldName]?.map((message: string) => (
+      <p className="field-error" key={`${fieldName}-${message}`}>
+        {message}
+      </p>
+    ));
 
   const loadChildProfile = async () => {
+    setApiError(null);
     setStatus("Loading child onboarding profile...");
     try {
       const response = await fetch(`${apiBase}/onboarding/${childId}`);
       if (!response.ok) {
-        setStatus(`Profile lookup failed with status ${response.status}.`);
+        const error = await readApiError(response);
+        setApiError(error);
+        setStatus(error.message);
         return;
       }
 
       const data = (await response.json()) as ChildProfileResponse;
+      setApiError(null);
       setChildProfile(data.childProfile);
       setStatus(data.childProfile ? "Onboarding profile loaded." : "No profile yet. Ask parent to run setup.");
     } catch {
@@ -50,15 +93,19 @@ export default function HomePage() {
   };
 
   const loadProgress = async () => {
+    setApiError(null);
     setStatus("Loading mission progress...");
     try {
       const response = await fetch(`${apiBase}/progress/${childId}/world-pixel-park`);
       if (!response.ok) {
-        setStatus(`Progress lookup failed with status ${response.status}.`);
+        const error = await readApiError(response);
+        setApiError(error);
+        setStatus(error.message);
         return;
       }
 
       const data = (await response.json()) as ProgressResponse;
+      setApiError(null);
       setProgress(data.progress);
       setStatus("Progress loaded.");
     } catch {
@@ -67,6 +114,7 @@ export default function HomePage() {
   };
 
   const completeMission = async (missionId: string, unlockSandbox = false) => {
+    setApiError(null);
     setStatus(`Completing ${missionId}...`);
     try {
       const response = await fetch(`${apiBase}/progress/${childId}/world-pixel-park/mission-complete`, {
@@ -76,11 +124,14 @@ export default function HomePage() {
       });
 
       if (!response.ok) {
-        setStatus(`Mission update failed with status ${response.status}.`);
+        const error = await readApiError(response);
+        setApiError(error);
+        setStatus(error.message);
         return;
       }
 
       const data = (await response.json()) as ProgressResponse;
+      setApiError(null);
       setProgress(data.progress);
       setEmittedEvents(data.emittedEvents ?? []);
       setStatus(`${missionId} saved with updated progress.`);
@@ -99,8 +150,21 @@ export default function HomePage() {
             The child flow now reads onboarding handoff from the API and records mission completion.
           </p>
           <p className="status">{status}</p>
+          {apiError && Object.keys(fieldErrors).length > 0 ? (
+            <div aria-live="polite">
+              <p className="status">Validation details</p>
+              {(Object.entries(fieldErrors) as [string, string[]][]).map(([fieldName, messages]) => (
+                <p className="field-error" key={fieldName}>
+                  {fieldName}: {messages.join(", ")}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <div className="controls">
-            <input value={childId} onChange={(event) => setChildId(event.target.value)} />
+            <div>
+              <input value={childId} onChange={(event) => setChildId(event.target.value)} />
+              {renderFieldErrors("childId")}
+            </div>
             <button onClick={loadChildProfile}>Load onboarding profile</button>
             <button onClick={loadProgress}>Load progress</button>
           </div>

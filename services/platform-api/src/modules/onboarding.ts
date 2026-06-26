@@ -5,35 +5,12 @@ import {
   onboardingParamsSchema,
   onboardingSetupBodySchema
 } from "./contracts.js";
-import { JsonFileStore } from "../persistence/json-file-store.js";
-import { validateInput } from "./validation.js";
+import type { OnboardingRepository } from "../persistence/repositories.js";
+import { sendNotFound, validateInput } from "./validation.js";
 
-const childStore = new JsonFileStore<ChildProfile>("children.json");
-const adultStore = new JsonFileStore<AdultAccount>("adults.json");
-
-const upsertChild = (children: ChildProfile[], candidate: ChildProfile): ChildProfile[] => {
-  const existingIndex = children.findIndex((item) => item.childId === candidate.childId);
-  if (existingIndex === -1) {
-    return [...children, candidate];
-  }
-
-  const next = [...children];
-  next[existingIndex] = candidate;
-  return next;
-};
-
-const upsertAdult = (accounts: AdultAccount[], candidate: AdultAccount): AdultAccount[] => {
-  const existingIndex = accounts.findIndex((item) => item.adultId === candidate.adultId);
-  if (existingIndex === -1) {
-    return [...accounts, candidate];
-  }
-
-  const next = [...accounts];
-  next[existingIndex] = candidate;
-  return next;
-};
-
-export const registerOnboardingRoutes: FastifyPluginAsync = async (app) => {
+export const registerOnboardingRoutes = (
+  repository: OnboardingRepository
+): FastifyPluginAsync => async (app) => {
   app.post<{
     Body: {
       adultId: string;
@@ -66,8 +43,7 @@ export const registerOnboardingRoutes: FastifyPluginAsync = async (app) => {
       progressSnapshot: "onboarding-complete"
     };
 
-    const adults = await adultStore.readAll();
-    const existingAdult = adults.find((adult) => adult.adultId === setupBody.adultId);
+    const existingAdult = await repository.getAdult(setupBody.adultId);
     const adultAccount: AdultAccount = {
       adultId: setupBody.adultId,
       roleType: "parent",
@@ -79,8 +55,8 @@ export const registerOnboardingRoutes: FastifyPluginAsync = async (app) => {
       entitlementTier: "free"
     };
 
-    await childStore.updateAll((children) => upsertChild(children, childProfile));
-    await adultStore.updateAll((accounts) => upsertAdult(accounts, adultAccount));
+    await repository.saveChild(childProfile);
+    await repository.saveAdult(adultAccount);
 
     return {
       childProfile,
@@ -97,8 +73,7 @@ export const registerOnboardingRoutes: FastifyPluginAsync = async (app) => {
         return reply;
       }
 
-      const children = await childStore.readAll();
-      const childProfile = children.find((item) => item.childId === params.childId) ?? null;
+      const childProfile = await repository.getChild(params.childId);
       return { childProfile };
     }
   );
@@ -114,10 +89,9 @@ export const registerOnboardingRoutes: FastifyPluginAsync = async (app) => {
       return reply;
     }
 
-    const children = await childStore.readAll();
-    const current = children.find((item) => item.childId === params.childId);
+    const current = await repository.getChild(params.childId);
     if (!current) {
-      return reply.code(404).send({ childProfile: null, emittedEvents: [] });
+      return sendNotFound(reply, `Child profile ${params.childId} was not found.`);
     }
 
     const updated: ChildProfile = {
@@ -126,7 +100,7 @@ export const registerOnboardingRoutes: FastifyPluginAsync = async (app) => {
       progressSnapshot: "guidance-updated"
     };
 
-    await childStore.updateAll((items) => upsertChild(items, updated));
+    await repository.saveChild(updated);
 
     return {
       childProfile: updated,

@@ -28,6 +28,36 @@ type GuidanceResponse = {
   emittedEvents: string[];
 };
 
+type ApiErrorPayload = {
+  error: string;
+  message: string;
+  statusCode: number;
+  fieldErrors: Record<string, string[]>;
+};
+
+const readApiError = async (
+  response: Pick<Response, "json" | "status">
+): Promise<ApiErrorPayload> => {
+  const fallback: ApiErrorPayload = {
+    error: "RequestFailed",
+    message: `Request failed with status ${response.status}.`,
+    statusCode: response.status,
+    fieldErrors: {}
+  };
+
+  try {
+    const payload = (await response.json()) as Partial<ApiErrorPayload>;
+    return {
+      error: payload.error ?? fallback.error,
+      message: payload.message ?? fallback.message,
+      statusCode: payload.statusCode ?? fallback.statusCode,
+      fieldErrors: payload.fieldErrors ?? {}
+    };
+  } catch {
+    return fallback;
+  }
+};
+
 export default function AdultPortalPage() {
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000", []);
   const [adultId, setAdultId] = useState("mom-olivia");
@@ -38,6 +68,7 @@ export default function AdultPortalPage() {
   const [status, setStatus] = useState("Ready for parent setup.");
   const [setupResult, setSetupResult] = useState<SetupResponse | null>(null);
   const [guidanceResult, setGuidanceResult] = useState<GuidanceResponse | null>(null);
+  const [apiError, setApiError] = useState<ApiErrorPayload | null>(null);
 
   const parseGuidance = (value: string): string[] =>
     value
@@ -45,7 +76,16 @@ export default function AdultPortalPage() {
       .map((item) => item.trim())
       .filter(Boolean);
 
+  const fieldErrors = apiError?.fieldErrors ?? {};
+  const renderFieldErrors = (fieldName: string) =>
+    fieldErrors[fieldName]?.map((message: string) => (
+      <p className="field-error" key={`${fieldName}-${message}`}>
+        {message}
+      </p>
+    ));
+
   const runSetup = async () => {
+    setApiError(null);
     setStatus("Saving parent and child setup...");
     try {
       const response = await fetch(`${apiBase}/onboarding/setup`, {
@@ -61,11 +101,14 @@ export default function AdultPortalPage() {
       });
 
       if (!response.ok) {
-        setStatus(`Setup failed with status ${response.status}.`);
+        const error = await readApiError(response);
+        setApiError(error);
+        setStatus(error.message);
         return;
       }
 
       const data = (await response.json()) as SetupResponse;
+      setApiError(null);
       setSetupResult(data);
       setStatus("Setup saved. Child can now start mission 1 in the child app.");
     } catch {
@@ -74,6 +117,7 @@ export default function AdultPortalPage() {
   };
 
   const updateGuidance = async () => {
+    setApiError(null);
     setStatus("Updating guidance settings...");
     try {
       const response = await fetch(`${apiBase}/onboarding/${childId}/guidance`, {
@@ -83,11 +127,14 @@ export default function AdultPortalPage() {
       });
 
       if (!response.ok) {
-        setStatus(`Guidance update failed with status ${response.status}.`);
+        const error = await readApiError(response);
+        setApiError(error);
+        setStatus(error.message);
         return;
       }
 
       const data = (await response.json()) as GuidanceResponse;
+      setApiError(null);
       setGuidanceResult(data);
       setStatus("Guidance settings updated for the child profile.");
     } catch {
@@ -106,6 +153,16 @@ export default function AdultPortalPage() {
             mission progression.
           </p>
           <p className="status-text">{status}</p>
+          {apiError && Object.keys(fieldErrors).length > 0 ? (
+            <div aria-live="polite">
+              <p className="status-text">Validation details</p>
+              {(Object.entries(fieldErrors) as [string, string[]][]).map(([fieldName, messages]) => (
+                <p className="field-error" key={fieldName}>
+                  {fieldName}: {messages.join(", ")}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="panel">
           <h2>Parent setup</h2>
@@ -113,14 +170,17 @@ export default function AdultPortalPage() {
             <label>
               Adult ID
               <input value={adultId} onChange={(event) => setAdultId(event.target.value)} />
+              {renderFieldErrors("adultId")}
             </label>
             <label>
               Child ID
               <input value={childId} onChange={(event) => setChildId(event.target.value)} />
+              {renderFieldErrors("childId")}
             </label>
             <label>
               Child display name
               <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+              {renderFieldErrors("displayName")}
             </label>
             <label>
               Age band
@@ -131,6 +191,7 @@ export default function AdultPortalPage() {
                 <option value="5-7">5-7</option>
                 <option value="8-10">8-10</option>
               </select>
+              {renderFieldErrors("ageBand")}
             </label>
             <label className="full-row">
               Guidance settings (comma-separated)
@@ -138,6 +199,7 @@ export default function AdultPortalPage() {
                 value={guidanceInput}
                 onChange={(event) => setGuidanceInput(event.target.value)}
               />
+              {renderFieldErrors("guidanceSettings")}
             </label>
           </div>
           <div className="actions">

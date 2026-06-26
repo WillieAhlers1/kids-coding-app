@@ -1,10 +1,8 @@
 import type { DomainEvent, WorldProgress } from "@kids-coding-app/shared-domain";
 import type { FastifyPluginAsync } from "fastify";
 import { progressMissionBodySchema, progressParamsSchema } from "./contracts.js";
-import { JsonFileStore } from "../persistence/json-file-store.js";
+import type { ProgressRepository } from "../persistence/repositories.js";
 import { validateInput } from "./validation.js";
-
-const progressStore = new JsonFileStore<WorldProgress>("progress.json");
 
 const defaultProgress = (childId: string, worldId: string): WorldProgress => ({
   childId,
@@ -15,7 +13,7 @@ const defaultProgress = (childId: string, worldId: string): WorldProgress => ({
   lastSessionState: "not-started"
 });
 
-export const registerProgressRoutes: FastifyPluginAsync = async (app) => {
+export const registerProgressRoutes = (repository: ProgressRepository): FastifyPluginAsync => async (app) => {
   app.get<{ Params: { childId: string; worldId: string }; Reply: { progress: WorldProgress } }>(
     "/progress/:childId/:worldId",
     async (request, reply) => {
@@ -24,9 +22,8 @@ export const registerProgressRoutes: FastifyPluginAsync = async (app) => {
         return reply;
       }
 
-      const records = await progressStore.readAll();
       const progress =
-        records.find((item) => item.childId === params.childId && item.worldId === params.worldId) ??
+        (await repository.getProgress(params.childId, params.worldId)) ??
         defaultProgress(params.childId, params.worldId);
 
       return { progress };
@@ -44,33 +41,26 @@ export const registerProgressRoutes: FastifyPluginAsync = async (app) => {
       return reply;
     }
 
-    let updatedProgress = defaultProgress(params.childId, params.worldId);
-    await progressStore.updateAll((records) => {
-      const current =
-        records.find((item) => item.childId === params.childId && item.worldId === params.worldId) ??
-        defaultProgress(params.childId, params.worldId);
+    const current =
+      (await repository.getProgress(params.childId, params.worldId)) ??
+      defaultProgress(params.childId, params.worldId);
 
-      const alreadyCompleted = current.completedMissions.includes(body.missionId);
-      const completedMissions = alreadyCompleted
-        ? current.completedMissions
-        : [...current.completedMissions, body.missionId];
-      const unlockedFeatures = body.unlockSandbox
-        ? Array.from(new Set([...current.unlockedFeatures, "starter-sandbox"]))
-        : current.unlockedFeatures;
+    const alreadyCompleted = current.completedMissions.includes(body.missionId);
+    const completedMissions = alreadyCompleted
+      ? current.completedMissions
+      : [...current.completedMissions, body.missionId];
+    const unlockedFeatures = body.unlockSandbox
+      ? Array.from(new Set([...current.unlockedFeatures, "starter-sandbox"]))
+      : current.unlockedFeatures;
 
-      updatedProgress = {
-        ...current,
-        completedMissions,
-        unlockedFeatures,
-        lastSessionState: "mission-complete"
-      };
+    const updatedProgress: WorldProgress = {
+      ...current,
+      completedMissions,
+      unlockedFeatures,
+      lastSessionState: "mission-complete"
+    };
 
-      const nextRecords = records.filter(
-        (item) => !(item.childId === params.childId && item.worldId === params.worldId)
-      );
-      nextRecords.push(updatedProgress);
-      return nextRecords;
-    });
+    await repository.saveProgress(updatedProgress);
 
     const emittedEvents: DomainEvent[] = ["MissionCompleted"];
     if (body.unlockSandbox) {

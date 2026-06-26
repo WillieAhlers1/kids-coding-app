@@ -1,10 +1,11 @@
 import type { DomainEvent, FamilyCircle } from "@kids-coding-app/shared-domain";
 import type { FastifyPluginAsync } from "fastify";
-import { JsonFileStore } from "../persistence/json-file-store.js";
+import type { FamilyCircleRepository } from "../persistence/repositories.js";
+import { sendNotFound } from "./validation.js";
 
-const circleStore = new JsonFileStore<FamilyCircle>("family-circles.json");
-
-export const registerFamilyCircleRoutes: FastifyPluginAsync = async (app) => {
+export const registerFamilyCircleRoutes = (
+  repository: FamilyCircleRepository
+): FastifyPluginAsync => async (app) => {
   app.post<{
     Body: { members: string[]; visibilityRules?: string[] };
     Reply: { circle: FamilyCircle; emittedEvents: DomainEvent[] };
@@ -18,7 +19,7 @@ export const registerFamilyCircleRoutes: FastifyPluginAsync = async (app) => {
       reactions: []
     };
 
-    await circleStore.updateAll((circles) => [...circles, circle]);
+    await repository.createCircle(circle);
 
     return {
       circle,
@@ -29,8 +30,7 @@ export const registerFamilyCircleRoutes: FastifyPluginAsync = async (app) => {
   app.get<{ Params: { circleId: string }; Reply: { circle: FamilyCircle | null } }>(
     "/family-circles/:circleId",
     async (request) => {
-      const circles = await circleStore.readAll();
-      const circle = circles.find((item) => item.circleId === request.params.circleId) ?? null;
+      const circle = await repository.getCircle(request.params.circleId);
       return { circle };
     }
   );
@@ -40,20 +40,15 @@ export const registerFamilyCircleRoutes: FastifyPluginAsync = async (app) => {
     Body: { projectId: string };
     Reply: { circle: FamilyCircle | null; emittedEvents: DomainEvent[] };
   }>("/family-circles/:circleId/approve-share", async (request, reply) => {
-    const circles = await circleStore.readAll();
-    const current = circles.find((item) => item.circleId === request.params.circleId);
+    const current = await repository.getCircle(request.params.circleId);
     if (!current) {
-      return reply.code(404).send({ circle: null, emittedEvents: [] });
+      return sendNotFound(reply, `Family circle ${request.params.circleId} was not found.`);
     }
 
     const approvedShares = Array.from(new Set([...current.approvedShares, request.body.projectId]));
     const updated: FamilyCircle = { ...current, approvedShares };
 
-    await circleStore.updateAll((existing) => {
-      const nextCircles = existing.filter((item) => item.circleId !== request.params.circleId);
-      nextCircles.push(updated);
-      return nextCircles;
-    });
+    await repository.saveCircle(updated);
 
     return { circle: updated, emittedEvents: ["ShareApproved"] };
   });
@@ -63,10 +58,9 @@ export const registerFamilyCircleRoutes: FastifyPluginAsync = async (app) => {
     Body: { reaction: string };
     Reply: { circle: FamilyCircle | null; emittedEvents: DomainEvent[] };
   }>("/family-circles/:circleId/reactions", async (request, reply) => {
-    const circles = await circleStore.readAll();
-    const current = circles.find((item) => item.circleId === request.params.circleId);
+    const current = await repository.getCircle(request.params.circleId);
     if (!current) {
-      return reply.code(404).send({ circle: null, emittedEvents: [] });
+      return sendNotFound(reply, `Family circle ${request.params.circleId} was not found.`);
     }
 
     const updated: FamilyCircle = {
@@ -74,11 +68,7 @@ export const registerFamilyCircleRoutes: FastifyPluginAsync = async (app) => {
       reactions: [...current.reactions, request.body.reaction]
     };
 
-    await circleStore.updateAll((existing) => {
-      const nextCircles = existing.filter((item) => item.circleId !== request.params.circleId);
-      nextCircles.push(updated);
-      return nextCircles;
-    });
+    await repository.saveCircle(updated);
 
     return { circle: updated, emittedEvents: ["ReactionAdded"] };
   });
