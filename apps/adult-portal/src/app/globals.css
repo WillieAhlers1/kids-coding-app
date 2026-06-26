@@ -1,0 +1,41 @@
+:root {
+  --bg: #f6f8fb;
+  --panel: #ffffff;
+  --ink: #1c2a38;
+  --accent: #1d8f6f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #eef7fb 0%, var(--bg) 100%);
+  color: var(--ink);
+}
+
+main {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 16px 36px rgba(28, 42, 56, 0.08);
+}
+
+.status {
+  color: var(--accent);
+  font-weight: 700;
+}
