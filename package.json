@@ -10,6 +10,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
     "dev:child": "npm run dev -w apps/child-client",
     "dev:adult": "npm run dev -w apps/adult-portal",
     "dev:api": "npm run dev -w services/platform-api"

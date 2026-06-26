@@ -52,3 +52,56 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
+
+.status {
+  margin-top: 0.8rem;
+  font-weight: 700;
+}
+
+.controls {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+input {
+  border: 1px solid rgba(21, 50, 67, 0.2);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  min-width: 180px;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.58rem 0.92rem;
+  font: inherit;
+  font-weight: 700;
+  color: white;
+  background: var(--accent-2);
+  cursor: pointer;
+}
+
+.mission-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+pre {
+  margin: 0;
+  padding: 0.9rem;
+  border-radius: 12px;
+  background: #102030;
+  color: #d7f2ff;
+  font-size: 0.82rem;
+  overflow-x: auto;
+}
+
+.events {
+  margin-top: 0.8rem;
+  font-weight: 600;
+}

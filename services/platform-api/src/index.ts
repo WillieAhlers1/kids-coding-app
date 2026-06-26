@@ -1,16 +1,7 @@
-import Fastify from "fastify";
-
-const app = Fastify({ logger: true });
-
-app.get("/health", async () => {
-  return {
-    ok: true,
-    service: "platform-api",
-    scope: "family-first-v1"
-  };
-});
+import { buildApp } from "./app.js";
 
 const start = async () => {
+  const app = await buildApp();
   try {
     await app.listen({ host: "0.0.0.0", port: 4000 });
   } catch (error) {

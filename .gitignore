@@ -6,3 +6,4 @@ coverage/
 *.log
 .env
 .env.local
+services/platform-api/.data/

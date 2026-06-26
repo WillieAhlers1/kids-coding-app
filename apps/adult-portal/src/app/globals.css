@@ -39,3 +39,64 @@ main {
   color: var(--accent);
   font-weight: 700;
 }
+
+.status-text {
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+input,
+select {
+  border: 1px solid rgba(28, 42, 56, 0.2);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+.full-row {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #4f6b86;
+}
+
+pre {
+  margin: 0;
+  padding: 0.9rem;
+  border-radius: 12px;
+  background: #0e1f2d;
+  color: #d9f0ff;
+  overflow-x: auto;
+  font-size: 0.82rem;
+}
